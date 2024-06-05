@@ -1,1 +1,2 @@
-activate update-ca-certificates
+interest-await update-ca-certificates-java
+interest-await update-ca-certificates-java-fresh

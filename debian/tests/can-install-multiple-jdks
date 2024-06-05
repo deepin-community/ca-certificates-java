@@ -1,0 +1,18 @@
+#!/bin/bash
+
+set -e
+
+output=`mktemp`
+
+jdks=$(apt-cache -n search java-sdk| awk '$1 ~ /-.*-jdk$/ {print $1}')
+
+# WHEN multiple JDKs are installed
+echo "Installing $jdks ..."
+apt-get install -y $jdks | tee ${output}
+
+# THEN installation is successful
+if [[ $(grep -L "Adding debian:Amazon_Root_CA_1.pem" ${output}) ]]; then
+    echo "Certificates were not imported !!!"
+    exit 255
+fi
+rm $output

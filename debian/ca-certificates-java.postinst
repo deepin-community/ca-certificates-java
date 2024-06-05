@@ -1,0 +1,179 @@
+#!/bin/sh
+set -e
+
+# use the locale C.UTF-8
+unset LC_ALL
+LC_CTYPE=C.UTF-8
+export LC_CTYPE
+
+storepass='changeit'
+if [ -f /etc/default/cacerts ]; then
+    . /etc/default/cacerts
+fi
+
+arch=`dpkg --print-architecture`
+JAR=/usr/share/ca-certificates-java/ca-certificates-java.jar
+CERTSDIR=/usr/share/ca-certificates
+LOCALCERTSDIR=/usr/local/share/ca-certificates
+ETCCERTSDIR=/etc/ssl/certs
+CACERTS=$ETCCERTSDIR/java/cacerts
+
+check_proc()
+{
+    if ! mountpoint -q /proc; then
+        echo >&2 "the keytool command requires a mounted proc fs (/proc)."
+        exit 1
+    fi
+}
+
+convert_pkcs12_keystore_to_jks()
+{
+    check_proc
+    if ! keytool -importkeystore \
+                 -srckeystore /etc/ssl/certs/java/cacerts \
+                 -destkeystore /etc/ssl/certs/java/cacerts.dpkg-new \
+                 -srcstoretype PKCS12 \
+                 -deststoretype JKS \
+                 -srcstorepass "$storepass" \
+                 -deststorepass "$storepass" \
+                 -noprompt; then
+        echo "failed to convert PKCS12 keystore to JKS" >&2
+        exit 1
+    fi
+
+    # only update if /etc/default/cacerts allows
+    if [ "$cacerts_updates" = "yes" ]; then
+        mv -f /etc/ssl/certs/java/cacerts /etc/ssl/certs/java/cacerts.dpkg-old
+        mv -f /etc/ssl/certs/java/cacerts.dpkg-new /etc/ssl/certs/java/cacerts
+    fi
+}
+
+find_pem_files()
+{
+	find $ETCCERTSDIR -type l -name \*.pem | sort | while read symlink ; do
+		case $(readlink "$symlink") in
+			$CERTSDIR*|$LOCALCERTSDIR*)
+				echo "$symlink"
+				;;
+		esac
+	done
+}
+
+update_cacerts()
+{
+	if [ "$cacerts_updates" != "yes" ] || [ "$CACERT_UPDATES" = "disabled" ]; then
+		echo "Updates of cacerts keystore are disabled."
+		exit 0
+	fi
+
+	if ! which java >/dev/null; then
+		echo "No JRE found. Skipping Java certificates setup."
+		exit 0
+	fi
+
+	if ! java -version 2> /dev/null; then
+		echo "Unable to execute Java. Skipping Java certificates setup."
+		exit 0
+	fi
+
+	if [ -f /var/lib/ca-certificates-java/convert_pkcs12_keystore_to_jks ]; then
+		convert_pkcs12_keystore_to_jks
+		rm /var/lib/ca-certificates-java/convert_pkcs12_keystore_to_jks
+	fi
+
+	if [ -f /var/lib/ca-certificates-java/fresh ]; then
+		>/var/lib/ca-certificates-java/fresh
+		pem_files=$(find_pem_files)
+
+		if [ -f "$CACERTS" ]; then
+			check_proc
+
+			# Java 8 does not have -cacerts option
+			if java -version 2>&1 | grep "1.8" > /dev/null ;
+			then
+				castore="-keystore ${CACERTS}"
+			else
+				castore="-cacerts"
+			fi
+
+			cacerts_aliases=$(keytool ${castore} -storepass "$storepass" -list -rfc | sed -n 's/^Alias name: *debian://ip' | tr '\n' ' ')
+
+			etc_ssl_certs_aliases=$(for pem in $pem_files ; do echo -n "$(basename "$pem" | tr A-Z a-z) "; done)
+			for alias in $cacerts_aliases ; do
+				case " $etc_ssl_certs_aliases " in
+					*" ${alias} "*)
+						: # keep
+						;;
+					*)
+						echo "-${alias}" >> /var/lib/ca-certificates-java/fresh
+						;;
+				esac
+			done
+		fi
+
+		for pem in $pem_files ; do
+			echo "+${pem}" >> /var/lib/ca-certificates-java/fresh
+		done
+	fi
+
+	if [ -s /var/lib/ca-certificates-java/fresh ]; then
+		java -Xmx64m -jar $JAR -storepass "$storepass" < /var/lib/ca-certificates-java/fresh
+	elif [ -s /var/lib/ca-certificates-java/pending ]; then
+		java -Xmx64m -jar $JAR -storepass "$storepass" < /var/lib/ca-certificates-java/pending
+	fi
+	echo "done."
+
+	rm -f /var/lib/ca-certificates-java/fresh
+	rm -f /var/lib/ca-certificates-java/pending
+}
+
+#DEBHELPER#
+
+if [ "$1" = "configure" ]; then
+	if dpkg --compare-versions "$2" lt-nl "20210218" ; then
+		# clean up misplaced symlinks from ancient versions (#688415)
+		if [ -L /libnss3.so ]; then
+			rm -v /libnss3.so
+		fi
+		if [ -L /libsoftokn3.so ]; then
+			rm -v /libsoftokn3.so
+		fi
+
+		if [ -f /etc/default/cacerts ]; then
+			chmod 0600 /etc/default/cacerts
+		fi
+	fi
+
+	if dpkg --compare-versions "$2" lt-nl "20180516"; then
+		if [ -e /etc/ssl/certs/java/cacerts ] && \
+			[ "$(head -c4 /etc/ssl/certs/java/cacerts)" != "$(echo -en '\xfe\xed\xfe\xed')" ]; then
+			touch /var/lib/ca-certificates-java/convert_pkcs12_keystore_to_jks
+		fi
+	fi
+
+	# older versions may not have received all updates from ca-certificates
+	if dpkg --compare-versions "$2" lt-nl "20210218" ; then
+		touch /var/lib/ca-certificates-java/fresh
+	fi
+
+	# initial install
+	if [ -z "$2" ]; then
+		touch /var/lib/ca-certificates-java/fresh
+	fi
+
+	update_cacerts
+fi
+
+if [ "$1" = "triggered" ]; then
+	case " $2 " in
+		*" update-ca-certificates-java-fresh "*)
+			touch /var/lib/ca-certificates-java/fresh
+			;;
+	esac
+
+	if [ ! -f $CACERTS ]; then
+		touch /var/lib/ca-certificates-java/fresh
+	fi
+
+	update_cacerts
+fi

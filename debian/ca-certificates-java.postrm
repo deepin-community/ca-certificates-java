@@ -1,0 +1,10 @@
+#!/bin/sh
+set -e
+
+if [ "$1" = "purge" ]; then
+	rm -rf /etc/ssl/certs/java
+	rmdir /etc/ssl/certs 2>/dev/null || true
+	rm -rf /var/lib/ca-certificates-java
+fi
+
+#DEBHELPER#

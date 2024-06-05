@@ -1,0 +1,2 @@
+debian/jks-keystore		etc/ca-certificates/update.d/
+target/ca-certificates-java.jar	usr/share/ca-certificates-java/
