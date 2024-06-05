@@ -1,0 +1,11 @@
+#!/bin/sh
+set -e
+
+# rebuild cacerts on reinstallation after removal since certificate updates
+# that happened while the package was removed are missing
+if [ "$1" = "install" ] && [ -n "$2" ]; then
+	mkdir -p /var/lib/ca-certificates-java
+	touch /var/lib/ca-certificates-java/fresh
+fi
+
+#DEBHELPER#

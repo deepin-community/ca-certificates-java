@@ -1,0 +1,14 @@
+Tests: can-convert-keystore
+Depends: apt-utils, bash, default-jre-headless
+Restrictions: needs-root
+
+Tests: can-install-jre, can-install-multiple-jdks, can-install-libreoffice
+# No depends, this is a test for a clean install
+Depends: apt-utils, bash
+Restrictions: needs-root
+
+Tests: can-configure-cross-compilation
+# No depends, this is a test for a clean install
+Depends: apt-utils, bash, mmdebstrap, gpg, moreutils
+Restrictions: needs-root, allow-stderr
+Architecture: amd64

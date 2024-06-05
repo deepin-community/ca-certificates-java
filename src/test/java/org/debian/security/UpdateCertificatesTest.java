@@ -50,6 +50,16 @@ public class UpdateCertificatesTest {
     }
 
     /**
+     * Try to send an empty command ("") in parseLine
+     */
+    @Test
+    public void testEmptyCommand() throws Exception {
+        UpdateCertificates uc = new UpdateCertificates(ksFilename, ksPassword);
+        uc.parseLine("");
+        uc.finish();
+    }
+
+    /**
      * Try to send an invalid command ("x") in parseLine : throw UnknownInput
      */
     @Test

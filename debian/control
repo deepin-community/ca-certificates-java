@@ -4,19 +4,30 @@ Priority: optional
 Maintainer: Debian Java Maintainers <pkg-java-maintainers@lists.alioth.debian.org>
 Uploaders: Matthias Klose <doko@ubuntu.com>,
            James Page <james.page@ubuntu.com>
-Build-Depends: debhelper (>= 11), default-jdk, javahelper, junit4
-Standards-Version: 4.4.0
+Build-Depends:
+ debhelper-compat (= 13),
+ dh-sequence-javahelper,
+ default-jdk-headless,
+ java-common,
+ junit4,
+Rules-Requires-Root: no
+Standards-Version: 4.6.2
 Vcs-Git: https://salsa.debian.org/java-team/ca-certificates-java.git
 Vcs-Browser: https://salsa.debian.org/java-team/ca-certificates-java
 
 Package: ca-certificates-java
 Architecture: all
 Multi-Arch: foreign
-Depends: ca-certificates (>= 20121114),
-         default-jre-headless | java8-runtime-headless,
-         libnss3 (>= 3.12.10-2~),
-         ${misc:Depends}
-# We need a versioned Depends due to multiarch changes (bug #635571).
+Depends:
+ ca-certificates (>= 20210120),
+ ${misc:Depends},
+Breaks: openjdk-8-jre-headless  (<< 8u382~b04-2~),
+        openjdk-11-jre-headless (<< 11.0.19+7~1~),
+        openjdk-17-jre-headless (<< 17.0.8~6-3~),
+        openjdk-18-jre-headless (<< 18.0.2+9-2ubuntu1~),
+        openjdk-19-jre-headless (<< 19.0.2+7-0ubuntu4~),
+        openjdk-20-jre-headless (<< 20.0.1+9~1~),
+        openjdk-21-jre-headless (<< 21~9ea-1~)
 Description: Common CA certificates (JKS keystore)
  This package uses the hooks of the ca-certificates package to update the
  cacerts JKS keystore used for many java runtimes.

@@ -86,6 +86,9 @@ public class UpdateCertificates {
      * or {@link #deleteAlias(String)}.
      */
     protected void parseLine(final String line) throws GeneralSecurityException, IOException, UnknownInputException {
+        if (line.isEmpty()) {
+            return;
+        }
         String path = line.substring(1);
         String filename = path.substring(path.lastIndexOf("/") + 1);
         String alias = "debian:" + filename;
@@ -93,9 +96,6 @@ public class UpdateCertificates {
             keystore.addAlias(alias, path);
         } else if (line.startsWith("-")) {
             keystore.deleteAlias(alias);
-            // Remove old non-prefixed aliases, too. This code should be
-            // removed after the release of Wheezy.
-            keystore.deleteAlias(filename);
         } else {
             throw new UnknownInputException(line);
         }
