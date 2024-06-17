@@ -1,3 +1,100 @@
+ca-certificates-java (20240118) unstable; urgency=medium
+
+  [ Vladimir Petko ]
+  * d/rules: Use java_compat_level variable provided by java-common to
+    adjust -source/-target level to the minimum required by the default
+    Java. Closes: #1057495.
+  * Do not try to run foreign architecture java. Closes: #1043247.
+
+  [ Matthias Klose ]
+  * Build-depend on java-common.
+  * debian/tests: Don't hardcode JREs and JDKs. Closes: #1057696.
+
+ -- Matthias Klose <doko@debian.org>  Thu, 18 Jan 2024 10:40:28 +0100
+
+ca-certificates-java (20230710) unstable; urgency=medium
+
+  * Add apt-utils to the test dependencies.
+
+ -- Matthias Klose <doko@debian.org>  Mon, 10 Jul 2023 09:59:59 +0200
+
+ca-certificates-java (20230707) unstable; urgency=medium
+
+  [ Vladimir Petko ]
+  * Resolve circular JRE dependency:
+    - debian/ca-certificates-java.postinst: remove setup_path from "configure"
+      stage.
+    - debian/ca-certificates-java.postinst: do "fresh" update if cacerts file is
+      not found. Certificates are refreshed only in response to the trigger
+      activated by OpenJDK packages.
+    - debian/ca-certificates-java.postinst: fix cacert enumeration command for
+      Java 8.
+    - debian/control: remove JRE dependency.
+    - debian/control: add Breaks condition.
+    - debian/tests: add smoke tests.
+    - debian/ca-certificates-java.triggers: remove file trigger /usr/jvm,
+      explicitly declare triggers as -await.
+
+  [ Matthias Klose ]
+  * Adjust the breaks for Debian versions.
+
+ -- Matthias Klose <doko@debian.org>  Fri, 07 Jul 2023 11:13:17 +0200
+
+ca-certificates-java (20230620) unstable; urgency=medium
+
+  [ Matthias Klose ]
+  * Bump standards version.
+  * Build-depend on default-jdk-headless instead of default-jdk.
+
+  [ Vladimir Petko ]
+  * d/ca-certificates-java.postinst: Work-around not yet configured jre.
+
+ -- Matthias Klose <doko@debian.org>  Tue, 20 Jun 2023 06:09:44 +0200
+
+ca-certificates-java (20230103) unstable; urgency=medium
+
+  * Promote again the JRE recommendation to a dependency. Otherwise
+    non-default OpenJDK versions are uninstallable.
+
+ -- Matthias Klose <doko@debian.org>  Tue, 03 Jan 2023 09:10:44 +0100
+
+ca-certificates-java (20220719) unstable; urgency=medium
+
+  [ Andreas Beckmann ]
+  * Team upload.
+  * Switch to debhelper-compat (= 13).
+  * Set Rules-Requires-Root: no.
+  * UpdateCertificates.java: Ignore empty lines in stdin.  (Closes: #795244)
+  * Avoid warning about missing /etc/ssl/certs/java/cacerts on initial
+    install.
+  * Do not be satisfied by java7-runtime-headless.
+  * Remove support for upgrading from versions predating wheezy.
+  * Clean up misplaced symlinks in the root directory left over by ancient
+    versions.  (Closes: #688415)
+  * Drop libnss3 manipulations, no longer needed since openjdk-6-jre-headless
+    at least.
+  * Add update-ca-certificates-java trigger and let jks-keystore record the
+    pending certificate updates and postpone them to the processing of this
+    trigger.  (Closes: #908858)
+  * Add update-ca-certificates-java-fresh trigger, will be activated by
+    update-ca-certificates -f.  (Closes: #922981)
+  * Remove obsolete certificates when building a fresh cacerts file.
+    (Closes: #767272)
+  * Bump ca-certificates dependency to 20210120.
+  * Skip Java certificates setup if no JRE is available.
+  * Add trigger on /usr/lib/jvm to perform Java certificates setup if a JRE
+    becomes available.
+  * Demote JRE dependency to Recommends to break dependency cycle.
+    (Closes: #929685, #940297)
+  * Foreign architecture JREs that place java in PATH are also usable.
+    (Closes: #776860, #864331)
+
+  [ Matthias Klose ]
+  * Support Java 18-21. Closes: #994152.
+  * Bump Standards-Version to 4.6.0.
+
+ -- Matthias Klose <doko@debian.org>  Tue, 19 Jul 2022 16:02:33 +0200
+
 ca-certificates-java (20190909) unstable; urgency=medium
 
   * Team upload.
@@ -63,10 +160,11 @@ ca-certificates-java (20170930) unstable; urgency=medium
 
   * Team upload.
   * Revert the last two NMUs.
-    - Depend again on openjdk-8 after the stretch release.
+    - Depend again on openjdk-8 after the stretch release. (Closes: #863803)
     - Stop fiddling around with jvm-*.cfg files. ca-certificates-java
       has no business with providing an initial cacerts file. This is
       implemented in the openjdk packages. We are not 2008 anymore.
+      (Closes: #912187)
   * Bump standards version.
   * Remove Torsten Werner as uploader.
 
@@ -114,7 +212,7 @@ ca-certificates-java (20161107) unstable; urgency=medium
 ca-certificates-java (20160321) unstable; urgency=medium
 
   * Team upload.
-  * Drop support for obsolete Java 6 (Closes: #776897)
+  * Drop support for obsolete Java 6 (Closes: #776897, #816541)
   * Add support for Java 8 and 9 (Closes: #775775)
   * Bump Standards-Version to 3.9.7 (no changes)
   * Use secure HTTPS URI for Vcs-Browser
@@ -226,7 +324,7 @@ ca-certificates-java (20120524) unstable; urgency=low
 
   [ James Page ]
   * d/rules: Ensure java is built with source/target == 1.6 for backwards
-    compatibility with openjdk-6. 
+    compatibility with openjdk-6.
 
   [ Damien Raude-Morvan ]
   * Sync handling of nss.cfg between debian/jks-keystore.hook.in and
@@ -415,4 +513,3 @@ ca-certificates-java (20080514) unstable; urgency=low
   * Initial release.
 
  -- Matthias Klose <doko@ubuntu.com>  Mon, 02 Jun 2008 14:52:46 +0000
-

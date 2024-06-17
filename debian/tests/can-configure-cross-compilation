@@ -1,0 +1,49 @@
+#!/bin/bash
+set -ex
+
+if [ $(dpkg --print-architecture) != 'amd64' ]; then
+    echo "The test is only valid for amd64"
+    exit 0
+fi
+
+gpg --keyserver hkps://keyserver.ubuntu.com --recv-keys 0E98404D386FA1D9
+gpg --keyserver hkps://keyserver.ubuntu.com --recv-keys 6ED0E7B82643E131
+gpg --output unstable.pgp --export 6ED0E7B82643E131 0E98404D386FA1D9
+
+echo "Host architecture ${host_arch}"
+echo "Foreign architecture ${foreign_arch}"
+
+echo deb http://deb.debian.org/debian unstable main > sources.list
+echo deb [ trusted=yes ] file:///tmp/binaries / >> sources.list
+
+where=/tmp/binaries
+mkdir -p ${where}
+
+pushd ${where}
+apt download ca-certificates-java
+apt-ftparchive sources . \
+    | tee "$where"/Sources \
+    | gzip -9 > "$where"/Sources.gz
+
+apt-ftparchive packages "$where" \
+    | sed "s@$where@@" \
+    | tee "$where"/Packages \
+    | gzip -9 > "$where"/Packages.gz
+
+# sponge comes from moreutils
+apt-ftparchive \
+    -o"APT::FTPArchive::Release::Origin=$origin" \
+    -o"APT::FTPArchive::Release::Label=$label" \
+    -o"APT::FTPArchive::Release::Codename=$where" release "$where" \
+    | sponge "$where"/Release
+popd
+
+mmdebstrap  --setup-hook='copy-in /tmp/binaries /tmp' \
+            --keyring unstable.pgp \
+            --mode=root \
+            --variant=essential \
+            --architectures=amd64,armhf \
+            --include=openjdk-21-jdk-headless:armhf \
+            unstable /tmp/test-root sources.list
+
+
